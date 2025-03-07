@@ -1,8 +1,9 @@
 from Service import ScrapingSubject
 
 def execute():
-    return ScrapingSubject.execute()
-    if list.__contains__ == True:
-        return list
-    else:
-        return "Vacio"
+    list = ScrapingSubject.execute()
+    listSTR = []
+    for elem in list:
+        listSTR.append(elem.__str__())
+    return listSTR
+

@@ -1,11 +1,10 @@
 ### UI imports
-from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QListWidget, QListWidgetItem, QHBoxLayout, QVBoxLayout, QCheckBox
+from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QListWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QLabel
 #from PyQt6.QtGui import QFont
-#from PyQt6.QtCore import Qt
-from pyqt_checkbox_list_widget.checkBoxListWidget import CheckBoxListWidget
+from PyQt6.QtCore import Qt
 
-### UseCase imports
-from UseCase import UseCaseGetSubjects
+
+from VM import ViewModel
 
 class MainWindow(QWidget):
 
@@ -14,23 +13,41 @@ class MainWindow(QWidget):
         self.initUI()
     
     def initUI(self):
-        self.setMinimumHeight(500)
-        self.setMinimumWidth(700)
+        self.setMinimumHeight(700)
+        self.setMinimumWidth(1000)
         self.setWindowTitle("Home") # Titulo de la ventan
-
-        self.createElements()
-        self.show()
         
-    def createElements(self):
+        ## init ViewModel
+        self.ViewModel = ViewModel.ViewModel() 
+
+        ## init first window
+        self.subjectsWindow() 
+
+        ## init second window
+        self.schedulesWindow() 
+
+        ## init windows manager
+        self.stacked_layout = QStackedLayout()
+        self.stacked_layout.addWidget(self.subjects_window)
+        self.stacked_layout.addWidget(self.schedules_window)
+
+        self.setLayout(self.stacked_layout)
+        self.show()
+
+## Declaracion de ventanas
+    def subjectsWindow(self):
+        self.subjects_window = QWidget()
 
         VLayout = QVBoxLayout()
-        HLayout = QHBoxLayout()
+        HButtonLayout = QHBoxLayout()
+        HSubjectListLayout = QHBoxLayout()
 
-        self.subject_list = QListWidget(self)
-        self.subject_list.clicked.connect(self.selectSubject)
+        self.unselected_subject_list = QListWidget(self)
+        self.unselected_subject_list.clicked.connect(self.selectSubject)
 
-        #self.check_subject_list = CheckBoxListWidget()
-        #self.check_subject_list.activated.connect(self.selectSubject)
+        self.selected_subject_list = QListWidget(self)
+        self.selected_subject_list.clicked.connect(self.unselectSubject)
+
 
         buttonCM = QPushButton(text="Cargar materias")
         buttonCM.clicked.connect(self.loadSubject)
@@ -38,30 +55,47 @@ class MainWindow(QWidget):
         buttonCH = QPushButton(text="Cargar horarios")
         buttonCH.clicked.connect(self.loadSchedules)
 
-        HLayout.addWidget(buttonCM)
-        HLayout.addWidget(buttonCH)
+        HSubjectListLayout.addWidget(self.unselected_subject_list)
+        HSubjectListLayout.addWidget(self.selected_subject_list)
 
-        VLayout.addWidget(self.subject_list)
-        #VLayout.addWidget(self.check_subject_list)
-        VLayout.addLayout(HLayout)
+        HButtonLayout.addWidget(buttonCM)
+        HButtonLayout.addWidget(buttonCH)
 
-        self.setLayout(VLayout)
-        
-    
+        VLayout.addLayout(HSubjectListLayout)
+        VLayout.addLayout(HButtonLayout)
+
+        self.subjects_window.setLayout(VLayout)
+
+    def schedulesWindow(self):
+        self.schedules_window = QWidget()
+
+        label = QLabel("Label")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        HLayout = QHBoxLayout()
+        HLayout.addWidget(label)
+
+        self.schedules_window.setLayout(HLayout)
+
+
+## Declaracion de funciones 
     def loadSubject(self):
-        list = UseCaseGetSubjects.execute()
-        i = 0
-        for elem in list:
-            item = QListWidgetItem()
-            item.setText(elem.__str__())
-            self.subject_list.insertItem(i, item)
-            i = i +1
+        list = self.ViewModel.loadSubject()
+        for i in range(0, len(list)):
+            self.unselected_subject_list.insertItem(i, list[i])
 
     def loadSchedules(self):
-        pass
+        ##self.ViewModel.loadSchedules()
+        self.stacked_layout.setCurrentIndex(1)
 
     def selectSubject(self):
-        print(self.subject_list.currentItem().text())
+        item = self.unselected_subject_list.takeItem(self.unselected_subject_list.currentRow())
+        self.selected_subject_list.addItem(item)
+        self.ViewModel.selectSubject(self.unselected_subject_list.currentRow())
+
+    def unselectSubject(self):
+        item = self.selected_subject_list.takeItem(self.selected_subject_list.currentRow())
+        self.unselected_subject_list.addItem(item)
+        self.ViewModel.selectSubject(self.selected_subject_list.currentRow())
 
 
 if __name__ in "__main__":
