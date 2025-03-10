@@ -1,8 +1,8 @@
 from Service import ScrapingSchedule
 from PyQt6.QtWidgets import QListWidget, QListWidgetItem
 
-def execute(values):
+def execute(values, names):
     list = []
-    for value in values:
-        list.append(ScrapingSchedule.execute(value))
+    for i in range(len(values)):
+        list.append(ScrapingSchedule.execute(values[i], names[i]))
     return list

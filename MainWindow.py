@@ -1,5 +1,5 @@
 ### UI imports
-from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QListWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QLabel
+from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QListWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QLabel, QTableWidget, QTableWidgetItem
 #from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 
@@ -14,7 +14,7 @@ class MainWindow(QWidget):
     
     def initUI(self):
         self.setMinimumHeight(700)
-        self.setMinimumWidth(1000)
+        self.setMinimumWidth(1200)
         self.setWindowTitle("Home") # Titulo de la ventan
         
         ## init ViewModel
@@ -33,13 +33,13 @@ class MainWindow(QWidget):
 
         self.setLayout(self.stacked_layout)
         self.show()
+        self.setList()
 
 ## Declaracion de ventanas
     def subjectsWindow(self):
         self.subjects_window = QWidget()
 
         VLayout = QVBoxLayout()
-        HButtonLayout = QHBoxLayout()
         HSubjectListLayout = QHBoxLayout()
 
         self.unselected_subject_list = QListWidget(self)
@@ -49,32 +49,47 @@ class MainWindow(QWidget):
         self.selected_subject_list.clicked.connect(self.unselectSubject)
 
 
-        buttonCM = QPushButton(text="Cargar materias")
-        buttonCM.clicked.connect(self.loadSubject)
-
-        buttonCH = QPushButton(text="Cargar horarios")
-        buttonCH.clicked.connect(self.loadSchedules)
+        button = QPushButton(text="Cargar horarios")
+        button.clicked.connect(self.loadSchedules)
 
         HSubjectListLayout.addWidget(self.unselected_subject_list)
         HSubjectListLayout.addWidget(self.selected_subject_list)
 
-        HButtonLayout.addWidget(buttonCM)
-        HButtonLayout.addWidget(buttonCH)
-
         VLayout.addLayout(HSubjectListLayout)
-        VLayout.addLayout(HButtonLayout)
+        VLayout.addWidget(button)
 
         self.subjects_window.setLayout(VLayout)
 
     def schedulesWindow(self):
         self.schedules_window = QWidget()
 
-        label = QLabel("Label")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        HLayout = QHBoxLayout()
-        HLayout.addWidget(label)
+        self.table = QTableWidget(29, 5, self)
+        
+        self.table.setHorizontalHeaderLabels(["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"])
+        self.table_row = []
+        val = 8
+        for i in range(29):
+            if i % 2 != 0:
+                if val < 10:
+                    self.table_row.append("0"+str(val)+":30")
+                else:
+                    self.table_row.append(str(val)+":30")
+                val+=1
+            else:
+                if val < 10:
+                    self.table_row.append("0"+str(val)+":00")
+                else:
+                    self.table_row.append(str(val)+":00")
+        self.table.setVerticalHeaderLabels(self.table_row)
 
-        self.schedules_window.setLayout(HLayout)
+        button = QPushButton(text="Volver")
+        button.clicked.connect(self.goBack)
+
+        VLayout = QVBoxLayout() 
+        VLayout.addWidget(self.table)
+        VLayout.addWidget(button)
+
+        self.schedules_window.setLayout(VLayout)
 
 
 ## Declaracion de funciones 
@@ -83,19 +98,65 @@ class MainWindow(QWidget):
         for i in range(0, len(list)):
             self.unselected_subject_list.insertItem(i, list[i])
 
+    def loadMatrix(self, matrix, schedule_item):
+        if len(matrix) == 0:
+            matrix.append(schedule_item)
+        else:
+            for i in range(len(matrix)):
+                if matrix[i][0] == schedule_item[0] and matrix[i][1] == schedule_item[1]:
+                    matrix[i][2] = matrix[i][2] + "\n----\n" + schedule_item[2]
+                    return matrix
+            
+            matrix.append(schedule_item)
+        return matrix
+
     def loadSchedules(self):
-        ##self.ViewModel.loadSchedules()
         self.stacked_layout.setCurrentIndex(1)
+        
+        schedules = self.ViewModel.loadSchedules()
+        matrix = []
+        for list in schedules:
+            for elem in list:
+                schedule_item = [self.table_row.index(elem.start), elem.day, str(elem.subject) + "\nINICIO - "+ str(elem.type) + "- Confirmado: " + str(elem.confirmed)]
+                matrix = self.loadMatrix(matrix, schedule_item)
+
+                schedule_item = [self.table_row.index(elem.end), elem.day, str(elem.subject)+ "\nFIN - "+ str(elem.type)]
+                matrix = self.loadMatrix(matrix, schedule_item)
+
+        for elem in matrix:
+            item = QTableWidgetItem()
+            text = str(elem[2])
+            item.setText(text)
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(elem[0], elem[1], item)
+
+        self.table.resizeColumnsToContents()
+        self.table.resizeRowsToContents()
+
+
+    def goBack(self):
+        self.stacked_layout.setCurrentIndex(0)
+        for i in range(self.table.rowCount()):
+            for j in range(self.table.columnCount()):
+                self.table.takeItem(i, j)
 
     def selectSubject(self):
-        item = self.unselected_subject_list.takeItem(self.unselected_subject_list.currentRow())
-        self.selected_subject_list.addItem(item)
-        self.ViewModel.selectSubject(self.unselected_subject_list.currentRow())
+        self.ViewModel.select(self.unselected_subject_list.currentRow(), True)
+        self.setList()
 
     def unselectSubject(self):
-        item = self.selected_subject_list.takeItem(self.selected_subject_list.currentRow())
-        self.unselected_subject_list.addItem(item)
-        self.ViewModel.selectSubject(self.selected_subject_list.currentRow())
+        self.ViewModel.select(self.selected_subject_list.currentRow(), False)
+        self.setList()
+    
+    def setList(self):
+        selected = self.ViewModel.getSelected()
+        unselected = self.ViewModel.getUnselected()
+        self.selected_subject_list.clear()
+        self.unselected_subject_list.clear()
+        for i in range(len(selected)):
+            self.selected_subject_list.insertItem(i, selected[i])
+        for i in range(len(unselected)):
+            self.unselected_subject_list.insertItem(i, unselected[i])
 
 
 if __name__ in "__main__":

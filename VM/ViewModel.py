@@ -7,38 +7,37 @@ class ViewModel:
     def __init__(self):
         self.unselected_subject_list = []
         self.selected_subject_list = []
-        self.load = False
+        self.loadSubject()
+
+    def getSelected(self):
+        return self.selected_subject_list
+    def getUnselected(self):
+        return self.unselected_subject_list
 
     def loadSubject(self):
-        if not self.load:
-            self.load = True
-            self.unselected_subject_list = UseCaseGetSubjects.execute()
-            return self.unselected_subject_list
+        self.load = True
+        self.unselected_subject_list = UseCaseGetSubjects.execute()
+
+    def select(self, index, select):
+        # subject selected
+        if select:
+            item = self.unselected_subject_list[index]
+            del self.unselected_subject_list[index]
+            self.selected_subject_list.append(item)
+        # subject unselected
         else:
-            print("Ya cargadas")
-            return []
-
-    def selectSubject(self, index):
-        item = self.unselected_subject_list[index]
-        del self.unselected_subject_list[index]
-
-        self.selected_subject_list.append(item) 
-
-    def unselectSubject(self, index):
-        item = self.selected_subject_list[index]
-        del self.selected_subject_list[index]
-
-        self.unselected_subject_list.append(item)
+            item = self.selected_subject_list[index]
+            del self.selected_subject_list[index]
+            self.unselected_subject_list.append(item)
 
     def loadSchedules(self):
         values = []
+        names = []
         for i in range(0, len(self.selected_subject_list)):
             value = int(self.selected_subject_list[i].split()[0])
+            name = str(self.selected_subject_list[i].split("-")[1].split("(")[0])
+            name = name.replace(" ", "", 1)
             values.append(value)
-        
-        list = UseCaseGetSchedules.execute(values)
-        for i in list:
-            for j in i:
-                print(j)
-            print("---")
+            names.append(name)
+        return UseCaseGetSchedules.execute(values, names)
 
