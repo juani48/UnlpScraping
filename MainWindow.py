@@ -1,5 +1,5 @@
 ### UI imports
-from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QListWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QLabel, QTableWidget, QTableWidgetItem
+from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QListWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QTableWidget, QTableWidgetItem, QLineEdit
 #from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 
@@ -15,7 +15,7 @@ class MainWindow(QWidget):
     def initUI(self):
         self.setMinimumHeight(700)
         self.setMinimumWidth(1200)
-        self.setWindowTitle("Home") # Titulo de la ventan
+        self.setWindowTitle("UNLP Scraping") # Titulo de la ventan
         
         ## init ViewModel
         self.ViewModel = ViewModel.ViewModel() 
@@ -48,15 +48,18 @@ class MainWindow(QWidget):
         self.selected_subject_list = QListWidget(self)
         self.selected_subject_list.clicked.connect(self.unselectSubject)
 
+        subjectButton = QPushButton(text="Cargar horarios")
+        subjectButton.clicked.connect(self.loadSchedules)
 
-        button = QPushButton(text="Cargar horarios")
-        button.clicked.connect(self.loadSchedules)
+        self.lineEdit = QLineEdit()
+        self.lineEdit.textChanged.connect(self.searchSubject)
 
         HSubjectListLayout.addWidget(self.unselected_subject_list)
         HSubjectListLayout.addWidget(self.selected_subject_list)
 
+        VLayout.addWidget(self.lineEdit)
         VLayout.addLayout(HSubjectListLayout)
-        VLayout.addWidget(button)
+        VLayout.addWidget(subjectButton)
 
         self.subjects_window.setLayout(VLayout)
 
@@ -91,7 +94,6 @@ class MainWindow(QWidget):
 
         self.schedules_window.setLayout(VLayout)
 
-
 ## Declaracion de funciones 
     def loadSubject(self):
         list = self.ViewModel.loadSubject()
@@ -104,7 +106,7 @@ class MainWindow(QWidget):
         else:
             for i in range(len(matrix)):
                 if matrix[i][0] == schedule_item[0] and matrix[i][1] == schedule_item[1]:
-                    matrix[i][2] = matrix[i][2] + "\n----\n" + schedule_item[2]
+                    matrix[i][2] = matrix[i][2] + "\n--------\n" + schedule_item[2]
                     return matrix
             
             matrix.append(schedule_item)
@@ -117,10 +119,15 @@ class MainWindow(QWidget):
         matrix = []
         for list in schedules:
             for elem in list:
-                schedule_item = [self.table_row.index(elem.start), elem.day, str(elem.subject) + "\nINICIO - "+ str(elem.type) + "- Confirmado: " + str(elem.confirmed)]
+                confirmed_text = ""
+                if elem.confirmed:
+                    confirmed_text = "Confirmada"
+                else:
+                    confirmed_text = "Sin confirmar"
+                schedule_item = [self.table_row.index(elem.start), elem.day, str(elem.subject) + "\nINICIO - "+ str(elem.type) + " - " + confirmed_text]
                 matrix = self.loadMatrix(matrix, schedule_item)
 
-                schedule_item = [self.table_row.index(elem.end), elem.day, str(elem.subject)+ "\nFIN - "+ str(elem.type)]
+                schedule_item = [self.table_row.index(elem.end), elem.day, str(elem.subject)+ "\nFIN - "+ str(elem.type) + " - " + confirmed_text]
                 matrix = self.loadMatrix(matrix, schedule_item)
 
         for elem in matrix:
@@ -141,23 +148,40 @@ class MainWindow(QWidget):
                 self.table.takeItem(i, j)
 
     def selectSubject(self):
-        self.ViewModel.select(self.unselected_subject_list.currentRow(), True)
+        item = self.unselected_subject_list.currentItem()
+        self.ViewModel.select(item.text(), True)
         self.setList()
 
     def unselectSubject(self):
-        self.ViewModel.select(self.selected_subject_list.currentRow(), False)
+        item = self.selected_subject_list.currentItem()
+        self.ViewModel.select(item.text(), False)
         self.setList()
     
     def setList(self):
         selected = self.ViewModel.getSelected()
-        unselected = self.ViewModel.getUnselected()
+        unselected = []
+        if len(self.lineEdit.text()) != 0:
+            text = self.lineEdit.text()
+            unselected = self.ViewModel.searchSubject(text)
+        else:
+            unselected = self.ViewModel.getUnselected()
         self.selected_subject_list.clear()
         self.unselected_subject_list.clear()
         for i in range(len(selected)):
             self.selected_subject_list.insertItem(i, selected[i])
         for i in range(len(unselected)):
             self.unselected_subject_list.insertItem(i, unselected[i])
-
+    
+    def searchSubject(self):
+        self.unselected_subject_list.clear()
+        text = self.lineEdit.text()
+        list = []
+        if len(text) == 0:
+            list = self.ViewModel.getUnselected()
+        else:
+            list = self.ViewModel.searchSubject(text)
+        for i in range(len(list)):
+            self.unselected_subject_list.insertItem(i, list[i])
 
 if __name__ in "__main__":
     app = QApplication([])

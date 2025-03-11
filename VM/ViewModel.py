@@ -18,14 +18,16 @@ class ViewModel:
         self.load = True
         self.unselected_subject_list = UseCaseGetSubjects.execute()
 
-    def select(self, index, select):
+    def select(self, text, select):
         # subject selected
         if select:
+            index = self.unselected_subject_list.index(text)
             item = self.unselected_subject_list[index]
             del self.unselected_subject_list[index]
             self.selected_subject_list.append(item)
         # subject unselected
         else:
+            index = self.selected_subject_list.index(text)
             item = self.selected_subject_list[index]
             del self.selected_subject_list[index]
             self.unselected_subject_list.append(item)
@@ -40,4 +42,14 @@ class ViewModel:
             values.append(value)
             names.append(name)
         return UseCaseGetSchedules.execute(values, names)
+
+    def searchSubject(self, string):
+        list = []
+        string = string.lower()
+        for elem in self.getUnselected():
+            if string in elem.lower() and elem not in list:
+                list.append(elem)
+        return list
+
+        
 
